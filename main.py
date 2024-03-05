@@ -11,8 +11,7 @@ from datetime import datetime
 load_dotenv()
 
 app = FastAPI()
-
-MONGODB_URL = ''
+MONGODB_URL = os.getenv('MONGODB_URL')
 client = MongoClient(MONGODB_URL)
 db = client["Cluster0"]
 
