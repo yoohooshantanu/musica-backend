@@ -11,8 +11,10 @@ from datetime import datetime
 load_dotenv()
 
 app = FastAPI()
-MONGODB_URL = os.getenv('MONGODB_URL')
+# MONGODB_URL = os.getenv('MONGODB_URL')
+MONGODB_URL = 'mongodb+srv://thisissatyajit05:7N0L8oFxSzg7AjZm@cluster0.wzqodsm.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0'
 client = MongoClient(MONGODB_URL)
+
 db = client["Cluster0"]
 
 musics_collection = db["musics"]
@@ -23,6 +25,10 @@ class MusicRequest(BaseModel):
     duration: int
     style: str
     instrument: str
+
+class AuthRequest(BaseModel):
+    email: str
+    password: str
 
 @app.post("/api/music")
 async def generate_music(music_request: MusicRequest):
@@ -67,13 +73,14 @@ async def generate_music(music_request: MusicRequest):
 async def get_music_by_email(email: str):
     try:
         collection = db["musics"]
-
-        documents = collection.find({"email": email}).sort("created_at", DESCENDING)
-        print(documents)
+        
+        documents = collection.find({'email': email}).sort("created_at", DESCENDING)
+        
         music_list = []
 
         for document in documents:
             document["_id"] = str(document["_id"])
+            print("D", document)
             music_list.append(document)
 
         return {"music_list": music_list}
@@ -95,6 +102,29 @@ async def delete_music_by_id(music_id: str):
     except Exception as error:
         print('Error deleting document:', error)
         raise HTTPException(status_code=500, detail=f"error: {str(error)}")
+
+@app.post("/api/auth")
+async def auth_user(auth_data: AuthRequest):
+    try:
+        collection = db["user"]
+        user_document = collection.find_one({'email': auth_data.email})
+
+        if user_document:
+            if user_document["password"] == auth_data.password:
+                return {"email": auth_data.email}
+            else:
+                raise HTTPException(status_code=401, detail="Incorrect password")
+
+        else:
+            collection.insert_one({
+                "email": auth_data.email,
+                "password": auth_data.password
+            })
+            return {"email": auth_data.email}
+
+    except Exception as error:
+        print('Error authenticating user:', error)
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(error)}")
 
 if __name__ == "__main__":
     import uvicorn
